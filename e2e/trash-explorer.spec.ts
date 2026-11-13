@@ -111,7 +111,7 @@ test("can filter trashed items by name", async () => {
 	const trashItems = getTrashItems(view);
 	await expect(trashItems).toHaveCount(5);
 
-	const searchInput = view.getByPlaceholder("Filter by name...");
+	const searchInput = view.getByPlaceholder("搜索文件名或原路径…");
 	await searchInput.fill("fløde");
 
 	await expect(trashItems).toHaveCount(2);

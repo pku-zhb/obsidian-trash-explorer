@@ -14,11 +14,17 @@ A plugin for [Obsidian](https://obsidian.md) that makes it possible to list, res
 
 Click the trash explorer icon in the ribbon or use _Show trash explorer_ from the command palette. Then you can restore or delete files and folders with the buttons in the trash explorer view. It's also possible to delete all trashed files with the _Empty trash_ command.
 
-Items are restored to a vault location matching their location in the trash. For instance, `.trash/Recipes/Belgian waffles.md` will be restored to `Recipes/Belgian waffles.md`, creating any intermediate folders if they don't exist. If the restore path already exists in the vault, the item will not be restored; you'll have to rename the existing file to something else first.
+## Harbor fork recovery features
 
-## Limitations
+- The default order is newest deletion first, mixing files and folders at each tree level. Choose oldest first or name order in the toolbar; the choice survives restarts.
+- Local deletions made while this plugin is enabled record the deletion time and original path in the plugin's `data.json`. Original directories and filenames are used when restoring, including individual children of a deleted folder. Existing targets block restoration; both copies remain intact.
+- Historical entries have no trustworthy deletion record. Desktop filesystem change time is shown as an explicitly labeled estimate; other entries show an unknown deletion time and sort last. Modification time is never presented as deletion time.
+- Click an item name to preview its contents and recovery destination. Text/Markdown previews are read-only plain text (up to 512 KiB), raster images up to 10 MiB, and folders show up to 200 immediate children. Other formats show metadata without content.
+- Search matches trash paths and recorded original paths. Refresh rescans the trash without reopening the panel.
 
-This plugin is at the mercy of where Obsidian places trashed items, as it has no access to their original location. In particular, Obsidian always moves items to the root of the `.trash` folder, regardless of their parent folder structure, so any parent folders will not be preserved when restoring. For instance, trashing the file `Recipes/Belgian waffles.md` will move it to `.trash/Belgian waffles.md`, and restoring it will move it to `Belgian waffles.md` in the root of the vault.
+Only Obsidian's local `.trash` is covered. Deletions made while the plugin is disabled, outside Obsidian, or on a device without this fork cannot acquire a true deletion timestamp or original path retroactively. Old entries retain the upstream fallback destination matching their location under `.trash`. Keep `data.json` together with the trash when synchronizing; it contains user recovery metadata, not file contents. Independent simultaneous deletions on different devices are not a transactional shared history.
+
+The fork wraps the documented adapter `trashLocal` operation and restores the original method on unload. Tracking failures report a notice without blocking deletion. Filesystem estimates can change after syncing or other metadata changes, so they remain estimates.
 
 ## Development
 

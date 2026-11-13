@@ -1,19 +1,40 @@
 import { Vault, normalizePath, type ListedFiles, type Stat } from "obsidian";
 import { basename, dirname } from "./path";
+import {
+	localChangeTime,
+	recordMatches,
+	type DeletionRecords,
+} from "./deletion-history";
+
+type RecoveryInfo = { deletedAt: number; originalPath?: string };
 
 export const TRASH_ROOT = normalizePath(".trash");
 
 export type TrashItem = TrashedFile | TrashedFolder;
 
 export class Trash {
+	private refreshVersion = 0;
 	private readonly root = new TrashedFolder(
 		this.vault,
 		TRASH_ROOT,
 		null,
-		null
+		null,
 	);
 
-	constructor(private readonly vault: Vault) {}
+	constructor(
+		private readonly vault: Vault,
+		private readonly records: DeletionRecords = {},
+		private readonly onChanged: () => Promise<void> = () =>
+			Promise.resolve(),
+	) {}
+
+	async forget(item: TrashItem): Promise<void> {
+		for (const path of Object.keys(this.records)) {
+			if (path === item.path || path.startsWith(`${item.path}/`))
+				delete this.records[path];
+		}
+		await this.onChanged();
+	}
 
 	get items(): TrashItem[] {
 		return this.root.children;
@@ -24,11 +45,13 @@ export class Trash {
 	}
 
 	async refresh(): Promise<void> {
+		const version = ++this.refreshVersion;
 		if (await this.vault.adapter.exists(this.root.path)) {
 			const trashedFiles = await this.vault.adapter.list(this.root.path);
-			this.root.children = await this.buildItems(trashedFiles, this.root);
+			const items = await this.buildItems(trashedFiles, this.root);
+			if (version === this.refreshVersion) this.root.children = items;
 		} else {
-			this.root.children = [];
+			if (version === this.refreshVersion) this.root.children = [];
 		}
 	}
 
@@ -38,11 +61,29 @@ export class Trash {
 		}
 
 		this.root.children = [];
+		await this.forget(this.root);
+	}
+
+	private recoveryInfo(
+		path: string,
+		stat: Stat | null,
+		parent: TrashedFolder | null,
+	): RecoveryInfo | undefined {
+		const record = this.records[path];
+		if (record && recordMatches(record, stat)) return record;
+		if (parent?.deletedAt)
+			return {
+				deletedAt: parent.deletedAt,
+				originalPath: parent.originalPath
+					? `${parent.originalPath}/${basename(path)}`
+					: undefined,
+			};
+		return undefined;
 	}
 
 	private async buildItems(
 		trashedFiles: ListedFiles,
-		parent: TrashedFolder | null
+		parent: TrashedFolder | null,
 	): Promise<TrashItem[]> {
 		const items = [];
 
@@ -54,19 +95,28 @@ export class Trash {
 				this.vault,
 				path,
 				stat,
-				parent
+				parent,
+				this.recoveryInfo(path, stat, parent),
+				await localChangeTime(this.vault.adapter, path),
 			);
 			items.push(trashedFolder);
 
 			trashedFolder.children = await this.buildItems(
 				files,
-				trashedFolder
+				trashedFolder,
 			);
 		}
 
 		for (const path of trashedFiles.files.sort(this.compareName)) {
 			const stat = await this.vault.adapter.stat(path);
-			const trashedFile = new TrashedFile(this.vault, path, stat, parent);
+			const trashedFile = new TrashedFile(
+				this.vault,
+				path,
+				stat,
+				parent,
+				this.recoveryInfo(path, stat, parent),
+				await localChangeTime(this.vault.adapter, path),
+			);
 			items.push(trashedFile);
 		}
 
@@ -84,22 +134,34 @@ abstract class TrashedBase {
 	readonly path: string;
 	readonly basename: string;
 	readonly size: number;
+	readonly deletedAt: number | null;
+	readonly originalPath?: string;
+	readonly estimatedAt: number | null;
 
 	constructor(
 		readonly vault: Vault,
 		path: string,
 		stat: Stat | null,
-		readonly parent: TrashedFolder | null
+		readonly parent: TrashedFolder | null,
+		recovery?: RecoveryInfo,
+		estimatedAt: number | null = null,
 	) {
 		this.path = normalizePath(path);
 		this.basename = basename(this.path);
 		this.size = stat?.size || 0;
+		this.deletedAt = recovery?.deletedAt ?? null;
+		this.originalPath = recovery?.originalPath;
+		this.estimatedAt = estimatedAt;
+	}
+
+	get restorePath(): string {
+		return normalizePath(
+			this.originalPath ?? this.path.replace(`${TRASH_ROOT}/`, ""),
+		);
 	}
 
 	protected async restore(): Promise<boolean> {
-		const restorePath = normalizePath(
-			this.path.replace(`${TRASH_ROOT}/`, "")
-		);
+		const restorePath = this.restorePath;
 
 		if (await this.vault.adapter.exists(restorePath)) {
 			return false;

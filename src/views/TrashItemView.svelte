@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDeletionTime } from "../sorting";
 	import { formatItemStats } from "../formatting";
 	import type { TrashItem } from "../models";
 	import type { TrashExplorerViewNode } from "../view";
@@ -8,21 +9,23 @@
 		viewNode: TrashExplorerViewNode;
 		restoreItem: (item: TrashItem) => void;
 		deleteItem: (item: TrashItem) => void;
+		previewItem: (item: TrashItem) => void;
 	}
 
-	let { viewNode, restoreItem, deleteItem }: Props = $props();
+	let { viewNode, restoreItem, deleteItem, previewItem }: Props = $props();
 
 	const item = $derived(viewNode.item);
 	const itemStats = $derived(formatItemStats(item));
 </script>
 
-<div class="trash-item">
+<div class="trash-item" data-trash-path={item.path}>
 	<div class="textcontainer">
-		<div class="name" aria-label={item.basename}>{item.basename}</div>
-		<div class="info">{itemStats}</div>
+		<button class="name" title="预览内容和恢复位置" onclick={() => previewItem(item)}>{item.basename}</button>
+		<div class="info">{itemStats} · {formatDeletionTime(item)}</div>
+		<div class="info" title={item.restorePath}>{item.originalPath ? "原路径" : "恢复到（原路径未知）"}：{item.restorePath}</div>
 	</div>
 	<div class="buttons">
-		<button aria-label="Restore" onclick={() => restoreItem(item)}>
+		<button aria-label="Restore" title={`恢复到 ${item.restorePath}`} onclick={() => restoreItem(item)}>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				width="24"
@@ -69,7 +72,7 @@
 {#if viewNode.nodes.length}
 	<div style="padding-left: 1em;">
 		{#each viewNode.nodes as childNode (childNode.item.path)}
-			<TrashItemView viewNode={childNode} {restoreItem} {deleteItem} />
+			<TrashItemView viewNode={childNode} {restoreItem} {deleteItem} {previewItem} />
 		{/each}
 	</div>
 {/if}
@@ -91,12 +94,14 @@
 	}
 
 	.textcontainer {
+		min-width: 0; flex: 1;
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
 	}
 
 	.name {
+		border: 0; background: none; box-shadow: none; text-align: left; padding: 0; height: auto; color: inherit; font: inherit; display: block; width: 100%;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;

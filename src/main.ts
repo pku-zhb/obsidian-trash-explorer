@@ -1,21 +1,72 @@
 import { Notice, Plugin } from "obsidian";
 import { TRASH_ROOT, Trash } from "./models";
+import {
+	loadRecoveryData,
+	trackDeletions,
+	type RecoveryData,
+	type SortOrder,
+} from "./deletion-history";
 import { ConfirmModal, TrashExplorerView, VIEW_TYPE } from "./view";
 
 export default class TrashExplorerPlugin extends Plugin {
 	private trash!: Trash;
+	private recoveryData!: RecoveryData;
+	private saveQueue = Promise.resolve();
+
+	private persist = (): Promise<void> => {
+		const save = this.saveQueue
+			.catch(() => undefined)
+			.then(() => this.saveData(this.recoveryData));
+		this.saveQueue = save;
+		return save;
+	};
 
 	async onload() {
-		this.trash = new Trash(this.app.vault);
+		this.recoveryData = loadRecoveryData(
+			(await this.loadData()) as unknown,
+		);
+		this.trash = new Trash(
+			this.app.vault,
+			this.recoveryData.records,
+			this.persist,
+		);
+		this.register(
+			trackDeletions(
+				this.app.vault.adapter,
+				this.recoveryData.records,
+				async () => {
+					await this.persist();
+					await this.trash.refresh();
+					await this.refreshOpenLeaves();
+				},
+				(error) => {
+					console.error(
+						"Trash Explorer: failed to record deletion metadata",
+						error,
+					);
+					new Notice(
+						"回收站时间或原路径记录失败，文件仍保留在回收站。",
+						8000,
+					);
+				},
+			),
+		);
 		await this.trash.refresh();
 
 		this.registerView(
 			VIEW_TYPE,
-			(leaf) => new TrashExplorerView(leaf, this.trash)
+			(leaf) =>
+				new TrashExplorerView(leaf, this.trash, {
+					getSortOrder: () => this.recoveryData.sortOrder,
+					setSortOrder: async (order: SortOrder) => {
+						this.recoveryData.sortOrder = order;
+						await this.persist();
+					},
+				}),
 		);
 
 		this.addRibbonIcon("trash", "Open trash explorer", () =>
-			this.activateView()
+			this.activateView(),
 		);
 
 		this.addCommand({
@@ -35,7 +86,7 @@ export default class TrashExplorerPlugin extends Plugin {
 			this.app.vault.on("delete", async () => {
 				await this.trash.refresh();
 				await this.refreshOpenLeaves();
-			})
+			}),
 		);
 	}
 
@@ -89,7 +140,7 @@ export default class TrashExplorerPlugin extends Plugin {
 					new Notice(`Emptied the trash`);
 					confirmModal.close();
 					resolve();
-				}
+				},
 			);
 
 			confirmModal.open();
