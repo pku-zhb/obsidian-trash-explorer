@@ -50,5 +50,5 @@ export function compactDeletionTime(item: TimedItem): string {
 	const value = date.getFullYear() === new Date().getFullYear()
 		? `${day} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
 		: `${date.getFullYear()}/${day}`;
-	return item.deletedAt === null ? `≈${value}` : value;
+	return value;
 }
