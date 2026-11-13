@@ -40,3 +40,15 @@ export function formatDeletionTime(item: TimedItem): string {
 		? `删除于 ${formatted}`
 		: `估算 ${formatted}`;
 }
+
+
+export function compactDeletionTime(item: TimedItem): string {
+	const time = item.deletedAt ?? item.estimatedAt;
+	if (time === null) return "—";
+	const date = new Date(time);
+	const day = `${date.getMonth() + 1}/${date.getDate()}`;
+	const value = date.getFullYear() === new Date().getFullYear()
+		? `${day} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
+		: `${date.getFullYear()}/${day}`;
+	return item.deletedAt === null ? `≈${value}` : value;
+}

@@ -37,7 +37,7 @@ export class TrashExplorerView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "Trash explorer";
+		return "回收站";
 	}
 
 	async onOpen(): Promise<void> {
@@ -118,15 +118,15 @@ export class TrashExplorerView extends ItemView {
 	}
 
 	private async deleteFile(item: TrashItem): Promise<boolean> {
-		const title = item.kind === "folder" ? "Delete folder" : "Delete file";
-		const message = `Are you sure you want to permanently delete "${item.basename}"?`;
+		const title = "永久删除";
+		const message = item.basename;
 
 		return new Promise<boolean>((resolve) => {
 			const confirmModal = new ConfirmModal(
 				this.app,
 				title,
 				message,
-				"Delete",
+				"永久删除",
 				async () => {
 					await item.remove();
 					await this.trash.forget(item);
@@ -171,7 +171,7 @@ export class ConfirmModal extends Modal {
 					}),
 			)
 			.addButton((button) =>
-				button.setButtonText("Cancel").onClick(() => {
+				button.setButtonText("取消").onClick(() => {
 					this.close();
 				}),
 			);
@@ -199,7 +199,7 @@ class PreviewModal extends Modal {
 		this.titleEl.setText(this.item.basename);
 		this.contentEl.createEl("p", { text: formatDeletionTime(this.item) });
 		this.contentEl.createEl("p", {
-			text: `恢复位置：${this.item.restorePath}${this.item.originalPath ? "" : "（历史原路径未知）"}`,
+			text: this.item.restorePath,
 		});
 		const preview = this.contentEl.createDiv();
 		preview.style.maxHeight = "55vh";
@@ -207,7 +207,7 @@ class PreviewModal extends Modal {
 		new Setting(this.contentEl)
 			.addButton((button) =>
 				button
-					.setButtonText("恢复文件")
+					.setButtonText("恢复")
 					.setCta()
 					.onClick(async () => {
 						button.setDisabled(true);
@@ -221,13 +221,13 @@ class PreviewModal extends Modal {
 		try {
 			if (this.item.kind === "folder") {
 				preview.createEl("p", {
-					text: `文件夹包含 ${this.item.children.length} 个直接子项：`,
+					text: `${this.item.children.length} 项`,
 				});
 				const list = preview.createEl("ul");
 				for (const child of this.item.children.slice(0, 200))
 					list.createEl("li", { text: child.basename });
 				if (this.item.children.length > 200)
-					preview.createEl("p", { text: "仅显示前 200 项。" });
+					preview.createEl("p", { text: "…" });
 				return;
 			}
 			const stat = await this.app.vault.adapter.stat(this.item.path);
@@ -276,14 +276,14 @@ class PreviewModal extends Modal {
 				pre.style.overflowWrap = "anywhere";
 			} else {
 				preview.createEl("p", {
-					text: "此文件类型或大小暂不支持内容预览。可核对名称和恢复位置后恢复。",
+					text: "无法预览",
 				});
 			}
 		} catch (error) {
 			console.error("Trash Explorer: preview failed", error);
 			if (!this.closed)
 				preview.createEl("p", {
-					text: "无法读取预览，文件可能已被移动。请刷新回收站。",
+					text: "无法读取",
 				});
 		}
 	}

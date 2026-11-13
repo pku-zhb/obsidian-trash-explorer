@@ -65,19 +65,19 @@ export default class TrashExplorerPlugin extends Plugin {
 				}),
 		);
 
-		this.addRibbonIcon("trash", "Open trash explorer", () =>
+		this.addRibbonIcon("trash", "回收站", () =>
 			this.activateView(),
 		);
 
 		this.addCommand({
 			id: "show-trash-explorer",
-			name: "Show trash explorer",
+			name: "打开回收站",
 			callback: () => this.activateView(),
 		});
 
 		this.addCommand({
 			id: "empty-trash",
-			name: "Empty trash",
+			name: "清空回收站",
 			callback: () => this.emptyTrash(),
 		});
 

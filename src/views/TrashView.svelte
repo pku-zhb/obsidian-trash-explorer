@@ -53,27 +53,23 @@
 
 <div class="container">
 	<div class="toolbar">
-		<select aria-label="回收站排序" bind:value={sortOrder} onchange={() => changeSortOrder(sortOrder)}>
-			<option value="deleted-desc">删除时间：最新在前</option>
-			<option value="deleted-asc">删除时间：最早在前</option>
+		<SearchInput placeholder="搜索" bind:query={searchQuery} />
+		<select class="sort-select" aria-label="排序" bind:value={sortOrder} onchange={() => changeSortOrder(sortOrder)}>
+			<option value="deleted-desc">最新</option>
+			<option value="deleted-asc">最早</option>
 			<option value="name">名称</option>
 		</select>
-		<button aria-label="刷新回收站" onclick={refreshTrash}>刷新</button>
+		<button class="refresh" aria-label="刷新" title="刷新" onclick={refreshTrash}>
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7a9 9 0 1 0 1 9M20 3v5h-5" /></svg>
+		</button>
 	</div>
-	<p class="time-help">历史文件按文件系统变更时间估算；删除时间未知的排最后。</p>
 	{#if trash.isEmpty}
 		<div class="pane-empty">回收站为空。</div>
 	{:else}
-		<div>
-			<SearchInput
-				placeholder="搜索文件名或原路径…"
-				bind:query={searchQuery}
-			/>
-		</div>
 
 		<div class="node-list">
 			{#each viewNodes as viewNode (viewNode.item.path)}
-				<TrashItemView {viewNode} {restoreItem} {deleteItem} {previewItem} />
+				<TrashItemView {viewNode} {restoreItem} {deleteItem} {previewItem} forceExpand={!!searchQuery.trim()} />
 			{:else}
 				<div class="pane-empty">没有匹配的文件。</div>
 			{/each}
@@ -82,18 +78,15 @@
 </div>
 
 <style>
-	.container {
-		height: 100%;
-		display: flex;
-		flex-direction: column;
-	}
-
-	.toolbar { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
-	.toolbar select { flex: 1; min-width: 0; }
-	.time-help { color: var(--text-muted); font-size: var(--font-ui-smaller); margin: 0 0 8px; }
-
-	.node-list {
-		margin-top: 1em;
-		overflow-y: auto;
-	}
+	.container { height: 100%; display: flex; flex-direction: column; min-width: 0; }
+	.toolbar { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; padding: 0 4px 10px; }
+	.toolbar :global(.search-input-container) { min-width: 0; flex: 1; }
+	.toolbar :global(input[type="search"]) { font-size: var(--font-ui-small); }
+	.toolbar .sort-select, .toolbar .refresh { all: unset !important; box-sizing: border-box !important; cursor: pointer !important; color: var(--text-muted) !important; font-size: var(--font-ui-small) !important; }
+	.toolbar .sort-select { width: 54px !important; height: 28px !important; appearance: auto !important; text-align: center !important; }
+	.toolbar .refresh { display: flex !important; align-items: center !important; justify-content: center !important; width: 26px !important; height: 26px !important; border-radius: 4px !important; }
+	.toolbar .refresh:hover { background: var(--background-modifier-hover) !important; }
+	.toolbar .refresh:focus-visible, .toolbar .sort-select:focus-visible { outline: 2px solid var(--interactive-accent) !important; }
+	.refresh svg { width: 15px; height: 15px; }
+	.node-list { overflow-y: auto; min-height: 0; flex: 1; }
 </style>

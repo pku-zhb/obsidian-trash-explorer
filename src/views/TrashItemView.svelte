@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { formatDeletionTime } from "../sorting";
-	import { formatItemStats } from "../formatting";
+	import { compactDeletionTime, formatDeletionTime } from "../sorting";
 	import type { TrashItem } from "../models";
 	import type { TrashExplorerViewNode } from "../view";
 	import TrashItemView from "./TrashItemView.svelte";
@@ -10,115 +9,70 @@
 		restoreItem: (item: TrashItem) => void;
 		deleteItem: (item: TrashItem) => void;
 		previewItem: (item: TrashItem) => void;
+		forceExpand?: boolean;
 	}
 
-	let { viewNode, restoreItem, deleteItem, previewItem }: Props = $props();
-
+	let { viewNode, restoreItem, deleteItem, previewItem, forceExpand = false }: Props = $props();
+	let expanded = $state(false);
 	const item = $derived(viewNode.item);
-	const itemStats = $derived(formatItemStats(item));
+	const isOpen = $derived(expanded || forceExpand);
+	const name = $derived(item.kind === "file" ? item.basename.replace(/\.md$/i, "") : item.basename);
 </script>
 
 <div class="trash-item" data-trash-path={item.path}>
-	<div class="textcontainer">
-		<button class="name" title="预览内容和恢复位置" onclick={() => previewItem(item)}>{item.basename}</button>
-		<div class="info">{itemStats} · {formatDeletionTime(item)}</div>
-		<div class="info" title={item.restorePath}>{item.originalPath ? "原路径" : "恢复到（原路径未知）"}：{item.restorePath}</div>
-	</div>
-	<div class="buttons">
-		<button aria-label="Restore" title={`恢复到 ${item.restorePath}`} onclick={() => restoreItem(item)}>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="24"
-				height="24"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				class="svg-icon lucide-rotate-ccw"
-			>
-				<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-				<path d="M3 3v5h5" />
-			</svg>
+	{#if item.kind === "folder"}
+		<button class="trash-control twisty" aria-label={isOpen ? "收起文件夹" : "展开文件夹"} aria-expanded={isOpen} onclick={() => expanded = !expanded}>
+			<svg class:expanded={isOpen} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
 		</button>
-		<button
-			aria-label="Delete permanently"
-			class="mod-warning"
-			onclick={() => deleteItem(item)}
-		>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="24"
-				height="24"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				class="svg-icon lucide-trash-2"
-			>
-				<path d="M3 6h18" />
-				<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-				<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-				<line x1="10" x2="10" y1="11" y2="17" />
-				<line x1="14" x2="14" y1="11" y2="17" />
-			</svg>
-		</button>
+	{:else}
+		<span class="twisty-spacer"></span>
+	{/if}
+	<button class="trash-name" title={item.basename} onclick={() => previewItem(item)}>{name}</button>
+	<div class="trash-tail">
+		<time title={formatDeletionTime(item)}>{compactDeletionTime(item)}</time>
+		<div class="trash-actions">
+			<button class="trash-control" aria-label="恢复" title="恢复" onclick={() => restoreItem(item)}>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10a9 9 0 1 1 1.8 8M3 4v6h6" /></svg>
+			</button>
+			<button class="trash-control delete" aria-label="永久删除" title="永久删除" onclick={() => deleteItem(item)}>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6" /></svg>
+			</button>
+		</div>
 	</div>
 </div>
 
-{#if viewNode.nodes.length}
-	<div style="padding-left: 1em;">
+{#if isOpen && viewNode.nodes.length}
+	<div class="trash-children">
 		{#each viewNode.nodes as childNode (childNode.item.path)}
-			<TrashItemView viewNode={childNode} {restoreItem} {deleteItem} {previewItem} />
+			<TrashItemView viewNode={childNode} {restoreItem} {deleteItem} {previewItem} {forceExpand} />
 		{/each}
 	</div>
 {/if}
 
 <style>
-	.trash-item {
-		margin-bottom: var(--size-2-1);
-		border-radius: var(--radius-s);
-		cursor: var(--cursor);
-		color: var(--nav-item-color);
-		font-size: var(--nav-item-size);
-		font-weight: var(--nav-item-weight);
-		line-height: var(--line-height-tight);
-		padding: var(--nav-item-padding);
-		padding-left: 0;
-		padding-right: 0;
-		display: flex;
-		align-items: center;
-	}
-
-	.textcontainer {
-		min-width: 0; flex: 1;
-		display: flex;
-		flex-direction: column;
-		overflow: hidden;
-	}
-
-	.name {
-		border: 0; background: none; box-shadow: none; text-align: left; padding: 0; height: auto; color: inherit; font: inherit; display: block; width: 100%;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.info {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		color: var(--text-faint);
-		font-size: var(--font-ui-small);
-	}
-
-	.buttons {
-		margin-left: auto;
-		display: flex;
-		gap: 3px;
-		padding-left: 3px;
+	.trash-item { display: flex; align-items: center; gap: 5px; min-height: 34px; padding: 3px 6px; border-radius: var(--radius-s); color: var(--text-normal); }
+	.trash-item:hover, .trash-item:focus-within { background: var(--background-modifier-hover); }
+	/* Reset theme button paint, including themes that apply !important rules. */
+	.trash-item button { all: unset !important; box-sizing: border-box !important; cursor: pointer !important; color: inherit !important; }
+	.trash-item button:focus-visible { outline: 2px solid var(--interactive-accent) !important; outline-offset: 1px !important; border-radius: 3px !important; }
+	.trash-item .trash-name { display: block !important; flex: 1 !important; min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; text-align: left !important; font: inherit !important; font-size: var(--font-ui-small) !important; line-height: 1.5 !important; }
+	.trash-item .trash-control { display: flex !important; align-items: center !important; justify-content: center !important; width: 26px !important; height: 26px !important; border-radius: 4px !important; color: var(--text-muted) !important; }
+	.trash-item .trash-control:hover { background: var(--background-modifier-hover) !important; color: var(--text-normal) !important; }
+	.trash-item .delete:hover { color: var(--text-error) !important; }
+	.trash-item .twisty, .twisty-spacer { flex: 0 0 14px !important; width: 14px !important; }
+	svg { display: block; width: 15px; height: 15px; }
+	.twisty svg { width: 13px; height: 13px; }
+	.expanded { transform: rotate(90deg); }
+	.trash-tail { display: grid; align-items: center; justify-items: end; flex: 0 0 92px; }
+	time, .trash-actions { grid-area: 1 / 1; }
+	time { color: var(--text-faint); font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+	.trash-actions { display: flex; gap: 2px; opacity: 0; pointer-events: none; }
+	.trash-item:hover .trash-actions, .trash-item:focus-within .trash-actions { opacity: 1; pointer-events: auto; }
+	.trash-item:hover time, .trash-item:focus-within time { visibility: hidden; }
+	.trash-children { padding-left: 16px; }
+	@media (hover: none) {
+		.trash-tail { flex-basis: auto; gap: 6px; display: flex; }
+		.trash-actions { opacity: 1; pointer-events: auto; }
+		.trash-item:hover time, .trash-item:focus-within time { visibility: visible; }
 	}
 </style>

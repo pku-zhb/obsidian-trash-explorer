@@ -28,6 +28,7 @@ export default defineConfig(
 	},
 	globalIgnores([
 		".obsidian-unpacked",
+		"local",
 		"e2e-vault",
 		"main.js",
 		"test-results",

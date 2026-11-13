@@ -16,7 +16,7 @@ Click the trash explorer icon in the ribbon or use _Show trash explorer_ from th
 
 ## Harbor fork recovery features
 
-- The default order is newest deletion first, mixing files and folders at each tree level. Choose oldest first or name order in the toolbar; the choice survives restarts.
+- The default order is newest deletion first, mixing files and folders at each tree level. The compact list shows names and short dates, with actions on hover or keyboard focus. Folders start collapsed and expand automatically for search results. Choose oldest first or name order in the toolbar; the choice survives restarts.
 - Local deletions made while this plugin is enabled record the deletion time and original path in the plugin's `data.json`. Original directories and filenames are used when restoring, including individual children of a deleted folder. Existing targets block restoration; both copies remain intact.
 - Historical entries have no trustworthy deletion record. Desktop filesystem change time is shown as an explicitly labeled estimate; other entries show an unknown deletion time and sort last. Modification time is never presented as deletion time.
 - Click an item name to preview its contents and recovery destination. Text/Markdown previews are read-only plain text (up to 512 KiB), raster images up to 10 MiB, and folders show up to 200 immediate children. Other formats show metadata without content.

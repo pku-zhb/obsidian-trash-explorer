@@ -58,11 +58,11 @@ test("can empty the trash from command palette", async () => {
 	const view = await openTrashView(page);
 
 	const trashItems = getTrashItems(view);
-	await expect(trashItems).toHaveCount(5);
+	await expect(trashItems).toHaveCount(3);
 
 	// Empty trash through the command palette
 	await page.getByLabel("Open command palette", { exact: true }).click();
-	await page.locator("input.prompt-input").pressSequentially("empty trash");
+	await page.locator("input.prompt-input").pressSequentially("清空回收站");
 	await expect(page.locator(".suggestion-item")).toHaveCount(1);
 	await page.locator(".suggestion-item").click();
 	await page.locator("button.mod-warning").getByText("Empty trash").click();
@@ -76,9 +76,10 @@ test("can restore items from trash explorer view", async () => {
 
 	const trashItemName = "Recipes";
 	const trashItem = getTrashItems(view).filter({ hasText: trashItemName });
-	await expect(trashItem).toContainText("2 files, 0 folders");
+	await expect(trashItem).toContainText("Recipes");
 
-	await trashItem.getByLabel("Restore").click();
+	await trashItem.hover();
+	await trashItem.getByLabel("恢复", { exact: true }).click();
 	await expect(trashItem).not.toBeVisible();
 
 	const filesView = await openFilesView(page);
@@ -93,11 +94,12 @@ test("can delete items from trash explorer view", async () => {
 
 	const trashItemName = "Recipes";
 	const trashItem = getTrashItems(view).filter({ hasText: trashItemName });
-	await expect(trashItem).toContainText("2 files, 0 folders");
+	await expect(trashItem).toContainText("Recipes");
 
-	await trashItem.getByLabel("Delete permanently").click();
+	await trashItem.hover();
+	await trashItem.getByLabel("永久删除", { exact: true }).click();
 
-	await page.locator("button.mod-warning").getByText("Delete").click();
+	await page.locator("button.mod-warning").getByText("永久删除", { exact: true }).click();
 
 	await expect(page.locator(".notice")).toHaveText(
 		`Permanently deleted "${trashItemName}"`
@@ -109,17 +111,17 @@ test("can filter trashed items by name", async () => {
 	const view = await openTrashView(page);
 
 	const trashItems = getTrashItems(view);
-	await expect(trashItems).toHaveCount(5);
+	await expect(trashItems).toHaveCount(3);
 
-	const searchInput = view.getByPlaceholder("搜索文件名或原路径…");
+	const searchInput = view.getByPlaceholder("搜索", { exact: true });
 	await searchInput.fill("fløde");
 
 	await expect(trashItems).toHaveCount(2);
 	await expect(trashItems.first()).toContainText("Recipes");
-	await expect(trashItems.last()).toContainText("Rødgrød med fløde.md");
+	await expect(trashItems.last()).toContainText("Rødgrød med fløde");
 
 	await searchInput.clear();
-	await expect(trashItems).toHaveCount(5);
+	await expect(trashItems).toHaveCount(3);
 });
 
 function getTrashItems(locator: Locator) {
@@ -135,7 +137,7 @@ function getFilesView(page: Page) {
 }
 
 async function openTrashView(page: Page) {
-	await page.getByLabel("Open trash explorer", { exact: true }).click();
+	await page.getByLabel("回收站", { exact: true }).click();
 	return getTrashView(page);
 }
 
