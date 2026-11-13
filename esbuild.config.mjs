@@ -42,7 +42,12 @@ const context = await esbuild.context({
 	outfile: "main.js",
 	plugins: [
 		esbuildSvelte({
-			compilerOptions: { css: "injected" },
+			compilerOptions: {
+				css: "injected",
+				// Obsidian reloads plugins without removing injected Svelte styles.
+				// Key styles by content so an update cannot reuse stale CSS.
+				cssHash: ({ hash, css }) => `svelte-${hash(css)}`,
+			},
 			preprocess: sveltePreprocess(),
 		}),
 	],
